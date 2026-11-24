@@ -1,0 +1,3056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pet Care English Tamagotchi</title>
+  <style>
+    :root {
+      --primary: #ff7b54;
+      --secondary: #ffb26b;
+      --accent: #ffd56b;
+      --green: #38b000;
+      --blue: #3a86ff;
+      --purple: #8338ec;
+      --dark: #1d2d44;
+      --glass-bg: rgba(255, 255, 255, 0.32);
+      --glass-border: rgba(255, 255, 255, 0.68);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-drag: none;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #111;
+    }
+
+    #game-wrapper {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-size: 100% 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: background-image 0.4s ease-in-out;
+    }
+
+    /* TOP-RIGHT CONTROLS (BACK ON TOP, NEVER OVERLAPS CENTER WINDOW) */
+    .top-bar {
+      position: absolute;
+      top: 14px;
+      right: 20px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: 28vw;
+      z-index: 110;
+      pointer-events: none;
+    }
+
+    .top-bar > * {
+      pointer-events: auto;
+    }
+
+    /* SIDE STACKED PROGRESS BARS (LEFT SIDE, NO WINDOW, HIGH VISIBILITY) */
+    .side-stats {
+      position: absolute;
+      top: 18px;
+      left: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 100;
+      pointer-events: none;
+      width: 220px;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .stat-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.85),
+        0 0 8px rgba(0, 0, 0, 0.65);
+    }
+
+    .stat-track {
+      width: 100%;
+      height: 20px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 3px solid #ffffff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 2px 5px rgba(0, 0, 0, 0.45);
+    }
+
+    .stat-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 10px;
+      transition: width 0.35s ease;
+      box-shadow: inset 0 3px 6px rgba(255, 255, 255, 0.45);
+    }
+
+    .fill-full   { background: linear-gradient(90deg, #ff5400, #ffbd00); }
+    .fill-happy  { background: linear-gradient(90deg, #2b9348, #80b918); }
+    .fill-clean  { background: linear-gradient(90deg, #0077b6, #00f5d4); }
+    .fill-sleepy { background: linear-gradient(90deg, #7209b7, #f72585); }
+
+    .btn-icon {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 2px solid var(--glass-border);
+      padding: 8px 14px;
+      border-radius: 30px;
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--dark);
+      text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+      transition: transform 0.15s, background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn-icon:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    /* SCREENS */
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 14px 24px 16px;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* CLEAN TRANSPARENT GLASS CARD FOR INTRO */
+    .title-card {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.40);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 2px solid rgba(255, 255, 255, 0.72);
+      padding: 26px 34px;
+      border-radius: 30px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+      max-width: 900px;
+      width: 94%;
+      margin: auto;
+    }
+
+    .title-card h1 {
+      margin: 0 0 18px;
+      font-size: 2.4rem;
+      color: #d9480f;
+      text-shadow: 0 2px 6px rgba(255,255,255,0.9);
+    }
+
+    /* 6-CHARACTER SELECTOR */
+    .pet-selector {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    @media (max-width: 860px) {
+      .pet-selector {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .pet-card {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(8px);
+      border: 3px solid rgba(255, 255, 255, 0.75);
+      border-radius: 20px;
+      padding: 12px 8px;
+      cursor: pointer;
+      transition: all 0.22s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pet-card:hover {
+      transform: translateY(-4px);
+      background: rgba(255, 255, 255, 0.68);
+    }
+
+    .pet-card.selected {
+      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 8px 20px rgba(255, 123, 84, 0.32);
+      transform: scale(1.04);
+    }
+
+    .pet-card img {
+      width: 82px;
+      height: 82px;
+      object-fit: contain;
+    }
+
+    .pet-card.small-chick-preview img {
+      width: 58px;
+      height: 58px;
+      margin: 12px 0;
+    }
+
+    .pet-card span {
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--dark);
+    }
+
+    .inputs-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .pet-name-input {
+      padding: 10px 18px;
+      font-size: 1.05rem;
+      background: rgba(255, 255, 255, 0.72);
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      border-radius: 30px;
+      outline: none;
+      text-align: center;
+      font-weight: 800;
+      color: var(--dark);
+      width: 240px;
+    }
+
+    .btn-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ff7b54, #ff4d1c);
+      color: white;
+      border: 2px solid rgba(255,255,255,0.75);
+      padding: 11px 28px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      border-radius: 40px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(255, 77, 28, 0.35);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px) scale(1.02);
+    }
+
+    .btn-guest {
+      background: linear-gradient(135deg, #3a86ff, #4361ee);
+      box-shadow: 0 8px 20px rgba(58, 134, 255, 0.35);
+    }
+
+    .btn-roster {
+      background: linear-gradient(135deg, #8338ec, #5a189a);
+      box-shadow: 0 8px 20px rgba(131, 56, 236, 0.35);
+    }
+
+    /* TOP CENTER PROMPT BANNERS (SIZED SO THEY NEVER TOUCH TOP-RIGHT OR TOP-LEFT) */
+    .thought-bubble {
+      margin-top: 4px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 3px solid var(--glass-border);
+      padding: 8px 36px;
+      border-radius: 40px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      font-size: 2.3rem;
+      font-weight: 900;
+      color: var(--dark);
+      text-shadow: 0 2px 6px rgba(255,255,255,0.95);
+      position: relative;
+      animation: floatBubble 2.5s ease-in-out infinite;
+      text-align: center;
+      z-index: 30;
+      max-width: 44vw;
+    }
+
+    .congrats-text {
+      margin-top: 10px;
+      font-size: 2.8rem;
+      font-weight: 900;
+      color: #fff;
+      text-align: center;
+      text-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.75),
+        0 0 25px rgba(255, 183, 3, 0.95);
+      z-index: 60;
+      animation: floatBubble 2s ease-in-out infinite;
+      max-width: 44vw;
+    }
+
+    @keyframes floatBubble {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    /* TOP WORD WINDOW (TURNS INTO SCRAMBLE IN SLEEP GAME) */
+    .word-prompt-banner {
+      margin-top: 2px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 2.5px solid var(--glass-border);
+      padding: 8px 28px;
+      border-radius: 30px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      text-align: center;
+      z-index: 60;
+      min-width: 280px;
+      max-width: 44vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      pointer-events: auto;
+    }
+
+    .prompt-sub {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #2b3a4a;
+      font-weight: 800;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    }
+
+    .prompt-russian {
+      font-size: 2.15rem;
+      font-weight: 900;
+      color: #111b27;
+      text-shadow: 0 2px 6px rgba(255,255,255,0.95);
+      line-height: 1.1;
+    }
+
+    .progress-pill {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #d9480f;
+      background: rgba(255, 255, 255, 0.65);
+      padding: 2px 12px;
+      border-radius: 20px;
+    }
+
+    /* INLINE SCRAMBLE INSIDE THE TOP WORD WINDOW */
+    .inline-scramble-box {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+
+    .inline-scramble-box.active {
+      display: flex;
+    }
+
+    .answer-slots {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      min-height: 52px;
+    }
+
+    .letter-slot {
+      width: 46px;
+      height: 52px;
+      border: 2px solid rgba(255,255,255,0.9);
+      border-bottom: 4px solid var(--purple);
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.7rem;
+      font-weight: 900;
+      color: var(--dark);
+    }
+
+    .letter-bank {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .letter-tile {
+      width: 50px;
+      height: 54px;
+      background: rgba(131, 56, 236, 0.88);
+      backdrop-filter: blur(6px);
+      color: #fff;
+      border: 2px solid rgba(255,255,255,0.85);
+      border-radius: 14px;
+      font-size: 1.65rem;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 5px 12px rgba(0,0,0,0.2);
+      transition: transform 0.1s;
+    }
+
+    .letter-tile:active { transform: translateY(3px); }
+    .letter-tile.used { opacity: 0.2; pointer-events: none; }
+
+    /* =========================================================
+     * PET STAGE: NORMALIZED CONSISTENT SIZES FOR ALL CHARACTERS
+     * ========================================================= */
+    .pet-stage-container {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .pet-sprite-wrap {
+      position: absolute;
+      left: 50%;
+      bottom: 11.5vh;
+      transform: translateX(-50%);
+      width: 390px;
+      height: 390px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      pointer-events: auto;
+      transition: width 0.4s ease, height 0.4s ease;
+    }
+
+    .pet-sprite-wrap.wide-pose-wrap {
+      width: 510px;
+      height: 390px;
+    }
+
+    .pet-sprite-wrap.chick-size {
+      width: 275px;
+      height: 275px;
+      bottom: 12.5vh;
+    }
+
+    .pet-sprite-wrap.chick-size.wide-pose-wrap {
+      width: 340px;
+      height: 275px;
+    }
+
+    .pet-sprite-wrap.adult-pet {
+      width: 455px;
+      height: 455px;
+      bottom: 11vh;
+    }
+
+    .pet-sprite-wrap.adult-pet.wide-pose-wrap {
+      width: 660px;
+      height: 455px;
+    }
+
+    .pet-sprite-wrap.walk-mode {
+      width: 225px;
+      height: 225px;
+      bottom: 29.5vh;
+      transition: left 1.15s cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+
+    .pet-sprite-wrap.chick-size.walk-mode {
+      width: 165px;
+      height: 165px;
+      bottom: 29.8vh;
+    }
+
+    .pet-sprite-wrap.adult-pet.walk-mode {
+      width: 295px;
+      height: 275px;
+      bottom: 29.2vh;
+    }
+
+    .pet-anim-box {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      transform-origin: bottom center;
+    }
+
+    .pet-sprite {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center bottom;
+      filter: drop-shadow(0 14px 20px rgba(0,0,0,0.32));
+      animation: breathe 3.2s ease-in-out infinite;
+      transform-origin: bottom center;
+      transition: opacity 2.2s ease;
+    }
+
+    .pet-sprite-evolve {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center bottom;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 2.4s ease;
+      filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.8));
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1) translateY(0); }
+      50% { transform: scale(1.02, 0.98) translateY(3px); }
+    }
+
+    .walking-step-bob {
+      animation: walkBob 0.38s ease-in-out 3 !important;
+    }
+
+    @keyframes walkBob {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-12px) rotate(3deg); }
+      75% { transform: translateY(-8px) rotate(-3deg); }
+    }
+
+    .purr-vibrate {
+      animation: purrVibe 0.08s linear infinite !important;
+    }
+
+    @keyframes purrVibe {
+      0%   { transform: translate(0, 0); }
+      25%  { transform: translate(-3px, 2px); }
+      50%  { transform: translate(3px, -2px); }
+      75%  { transform: translate(-2px, -2px); }
+      100% { transform: translate(2px, 2px); }
+    }
+
+    .pet-bounce {
+      animation: happyJump 0.55s ease infinite !important;
+    }
+
+    @keyframes happyJump {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-26px) scale(1.05); }
+    }
+
+    .pet-hit {
+      animation: hitBallAnim 0.5s ease !important;
+    }
+
+    @keyframes hitBallAnim {
+      0%   { transform: scale(1) rotate(0deg); }
+      40%  { transform: translateY(-28px) rotate(-12deg) scale(1.08); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    /* ACTION BAR ON MAIN SCREEN */
+    .action-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 14px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 2px solid var(--glass-border);
+      padding: 8px 20px;
+      border-radius: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      z-index: 45;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .action-btn {
+      border: 2px solid rgba(255,255,255,0.8);
+      padding: 10px 24px;
+      border-radius: 30px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.68);
+      color: var(--dark);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-3px) scale(1.04);
+      background: rgba(255, 255, 255, 0.94);
+    }
+
+    /* MINIGAME PLAYFIELD */
+    #minigame-playfield {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 35;
+      overflow: hidden;
+    }
+
+    /* 1. FEED: FOOD ITEMS AROUND THE RUG (NO SOUND ICONS IN MEAL 2) */
+    .food-floor-item {
+      position: absolute;
+      width: 205px;
+      height: 110px;
+      pointer-events: auto;
+      cursor: grab;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.2s;
+      z-index: 40;
+    }
+
+    .food-floor-item:hover {
+      transform: scale(1.08) !important;
+    }
+
+    .food-floor-item:active {
+      cursor: grabbing;
+      transform: scale(1.14) !important;
+    }
+
+    .food-floor-item svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 10px 8px rgba(0,0,0,0.35));
+    }
+
+    .food-label {
+      position: relative;
+      z-index: 2;
+      font-weight: 900;
+      font-size: 1.45rem;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.52);
+      padding: 4px 14px;
+      border-radius: 16px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.85);
+      text-align: center;
+    }
+
+    /* 2. PLAY: FOOTBALLS */
+    .football-item {
+      position: absolute;
+      width: 145px;
+      height: 145px;
+      pointer-events: auto;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.25s, left 0.5s cubic-bezier(0.25, 1, 0.5, 1), top 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+      animation: bounceBall 2.4s ease-in-out infinite;
+      z-index: 40;
+    }
+
+    .football-item:hover { transform: scale(1.09); }
+
+    .football-item svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 12px 14px rgba(0,0,0,0.32));
+    }
+
+    .football-label {
+      position: relative;
+      z-index: 2;
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: #fff;
+      background: rgba(20, 30, 48, 0.78);
+      border: 2px solid rgba(255,255,255,0.85);
+      padding: 4px 14px;
+      border-radius: 16px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.7);
+      text-align: center;
+    }
+
+    @keyframes bounceBall {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    /* 3. WALK: OPTIONS CLEARLY BETWEEN TOP BANNER AND GRAVEL PATH */
+    .walk-choice-container {
+      position: absolute;
+      top: 135px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 16px;
+      pointer-events: auto;
+      z-index: 50;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 60vw;
+    }
+
+    .walk-stone-btn {
+      background: rgba(255, 255, 255, 0.52);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 3px solid rgba(255, 255, 255, 0.92);
+      border-radius: 26px;
+      padding: 12px 28px;
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--dark);
+      text-shadow: 0 1px 3px rgba(255,255,255,0.95);
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+      transition: transform 0.15s, background 0.2s;
+    }
+
+    .walk-stone-btn:hover {
+      transform: translateY(-4px);
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .walk-goal-prop {
+      position: absolute;
+      left: 85%;
+      bottom: 29.5vh;
+      width: 115px;
+      height: 115px;
+      z-index: 18;
+      pointer-events: none;
+    }
+
+    /* 4. WASH: 6 FLYING WORD BUBBLES + 24 AMBIENT MINI BUBBLES */
+    .bubble-item {
+      position: absolute;
+      width: 145px;
+      height: 145px;
+      border-radius: 50%;
+      pointer-events: auto;
+      cursor: grab;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.88), rgba(173, 232, 244, 0.45) 45%, rgba(202, 240, 248, 0.28) 72%, rgba(255, 194, 226, 0.55) 100%);
+      border: 2.5px solid rgba(255, 255, 255, 0.92);
+      box-shadow: inset 0 0 18px rgba(255,255,255,0.9), 0 8px 18px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: #102a43;
+      text-shadow: 0 1px 5px #fff, 0 0 8px #fff;
+      text-align: center;
+      padding: 10px;
+      z-index: 42;
+      animation: flyAroundBubble 6.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes flyAroundBubble {
+      0%   { transform: translate(0px, 0px) scale(1); }
+      33%  { transform: translate(45px, -35px) scale(1.04); }
+      66%  { transform: translate(-35px, 28px) scale(0.97); }
+      100% { transform: translate(30px, -45px) scale(1.03); }
+    }
+
+    .ambient-mini-bubble {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), rgba(173, 232, 244, 0.35) 60%, rgba(255, 194, 226, 0.45) 100%);
+      border: 1.5px solid rgba(255,255,255,0.8);
+      z-index: 25;
+      animation: riseAmbient linear infinite;
+    }
+
+    @keyframes riseAmbient {
+      0%   { transform: translateY(105vh) translateX(0); opacity: 0; }
+      15%  { opacity: 0.78; }
+      85%  { opacity: 0.78; }
+      100% { transform: translateY(-10vh) translateX(40px); opacity: 0; }
+    }
+
+    .foam-overlay {
+      position: absolute;
+      width: 440px;
+      height: 440px;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      z-index: 28;
+      filter: drop-shadow(0 8px 16px rgba(0,0,0,0.18));
+    }
+
+    /* 5. SLEEP: PETTING HUD */
+    .petting-hud {
+      position: absolute;
+      top: 145px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 2px solid var(--glass-border);
+      padding: 8px 24px;
+      border-radius: 26px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 40;
+      pointer-events: none;
+      text-align: center;
+    }
+
+    .petting-bar-bg {
+      width: 220px;
+      height: 14px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1.5px solid #fff;
+    }
+
+    .petting-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #ff7b54, #ffbe0b);
+      transition: width 0.1s;
+    }
+
+    .floating-hand {
+      position: fixed;
+      font-size: 3.4rem;
+      pointer-events: none;
+      z-index: 200;
+      display: none;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.3));
+    }
+
+    /* MODALS: TEACHER MODE & SAVED STUDENTS ROSTER */
+    .overlay-modal {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 15, 28, 0.45);
+      backdrop-filter: blur(8px);
+      z-index: 150;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .overlay-modal.active { display: flex; }
+
+    .modal-panel {
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(18px);
+      border: 2px solid rgba(255,255,255,0.92);
+      width: 100%;
+      max-width: 700px;
+      border-radius: 28px;
+      padding: 26px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+
+    .modal-panel textarea {
+      width: 100%;
+      height: 180px;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.8);
+      border: 2px solid rgba(0,0,0,0.15);
+      font-family: monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      resize: vertical;
+    }
+
+    .preset-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      background: rgba(255,255,255,0.75);
+      border: 2px solid rgba(0,0,0,0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .preset-btn:hover { background: #fff; }
+
+    /* STUDENT ROSTER LIST ITEMS */
+    .student-list-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .student-row-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.85);
+      border: 2px solid rgba(0,0,0,0.08);
+      padding: 12px 18px;
+      border-radius: 18px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .student-info-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .student-name-title {
+      font-weight: 900;
+      font-size: 1.15rem;
+      color: var(--dark);
+    }
+
+    .student-meta-sub {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #555;
+    }
+
+    .shake {
+      animation: shakeAnim 0.4s ease !important;
+    }
+
+    @keyframes shakeAnim {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(10px); }
+      75% { transform: translateX(-8px); }
+    }
+
+    #fx-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 95;
+    }
+
+    .zzz-particle {
+      position: absolute;
+      font-weight: 900;
+      font-size: 2.1rem;
+      color: #fff;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.45);
+      pointer-events: none;
+      animation: floatZzz 2.2s ease-out forwards;
+      z-index: 55;
+    }
+
+    @keyframes floatZzz {
+      0% { transform: translate(0, 0) scale(0.6); opacity: 1; }
+      100% { transform: translate(35px, -110px) scale(1.35); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <canvas id="fx-canvas"></canvas>
+  <div id="floating-hand" class="floating-hand">🤚</div>
+
+  <!-- STACKED SIDE PROGRESS BARS (LEFT SIDE, NO WINDOW) -->
+  <div class="side-stats" id="side-stats" style="display:none;">
+    <div class="stat-item">
+      <div class="stat-label"><span>🍖 Full</span><span id="pct-full">0%</span></div>
+      <div class="stat-track"><div class="stat-fill fill-full" id="bar-full"></div></div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label"><span>⚽ Happy</span><span id="pct-happy">0%</span></div>
+      <div class="stat-track"><div class="stat-fill fill-happy" id="bar-happy"></div></div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label"><span>🫧 Clean</span><span id="pct-clean">0%</span></div>
+      <div class="stat-track"><div class="stat-fill fill-clean" id="bar-clean"></div></div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label"><span>🌙 Sleepy</span><span id="pct-sleepy">0%</span></div>
+      <div class="stat-track"><div class="stat-fill fill-sleepy" id="bar-sleepy"></div></div>
+    </div>
+  </div>
+
+  <!-- TOP-RIGHT NAVIGATION CONTROLS (BACK ON TOP) -->
+  <div class="top-bar">
+    <button class="btn-icon" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    <button class="btn-icon" id="btn-sound" onclick="toggleSound()">🔊 Sound: ON</button>
+    <button class="btn-icon" onclick="openStudentsModal()">👨‍🎓 Students</button>
+    <button class="btn-icon" onclick="openTeacherMode()">👩‍🏫 Words</button>
+    <button class="btn-icon" id="btn-back-hub" style="display:none;" onclick="returnToHubEarly()">↩ Room</button>
+    <button class="btn-icon" onclick="resetToIntro()">🏠 Menu</button>
+  </div>
+
+  <!-- 1. CLEAN INTRO SCREEN (NO BABY/ADULT/ROUND HINTS, NO PET NAME, "PLAY" BUTTON) -->
+  <div id="screen-intro" class="screen active">
+    <div class="title-card">
+      <h1>🐾 Tamagotchi English</h1>
+
+      <div class="pet-selector">
+        <div class="pet-card selected" onclick="selectCharacterStage('feline', 0, this)">
+          <img id="intro-kitten-preview" alt="Kitten" />
+          <span>🐱 Kitten</span>
+        </div>
+        <div class="pet-card" onclick="selectCharacterStage('feline', 1, this)">
+          <img id="intro-cat-preview" alt="Cat" />
+          <span>🐈 Cat</span>
+        </div>
+        <div class="pet-card" onclick="selectCharacterStage('canine', 0, this)">
+          <img id="intro-puppy-preview" alt="Puppy" />
+          <span>🐶 Puppy</span>
+        </div>
+        <div class="pet-card" onclick="selectCharacterStage('canine', 1, this)">
+          <img id="intro-dog-preview" alt="Dog" />
+          <span>🐕 Dog</span>
+        </div>
+        <div class="pet-card small-chick-preview" onclick="selectCharacterStage('avian', 0, this)">
+          <img id="intro-chick-preview" alt="Chick" />
+          <span>🐥 Chick</span>
+        </div>
+        <div class="pet-card" onclick="selectCharacterStage('avian', 1, this)">
+          <img id="intro-chicken-preview" alt="Chicken" />
+          <span>🐔 Chicken</span>
+        </div>
+      </div>
+
+      <div class="inputs-row">
+        <input type="text" id="student-name-input" class="pet-name-input" placeholder="Student's Name..." />
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" onclick="startSavedStudentGame()">💾 Start & Save Student</button>
+        <button class="btn-primary btn-guest" onclick="startGuestGame()">🎮 Play</button>
+        <button class="btn-primary btn-roster" onclick="openStudentsModal()">👨‍🎓 Saved Students List</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MAIN ROOM & MINIGAME SCREEN -->
+  <div id="screen-main" class="screen">
+    <!-- Top Short & Big Hint Banner -->
+    <div id="hub-thought" class="thought-bubble">Hi!</div>
+
+    <!-- In-place Congratulations Banner -->
+    <div id="congrats-banner" class="congrats-text" style="display:none;"></div>
+
+    <!-- Single Top Word Window (Transforms directly into Scramble in Sleep Game!) -->
+    <div id="minigame-banner" class="word-prompt-banner" style="display:none;">
+      <span class="prompt-sub" id="minigame-instruction">Choose the right translation:</span>
+      <div class="prompt-russian" id="prompt-russian-word">Яблоко</div>
+
+      <!-- Inline Scramble Slots & Letter Bank (Inside the same top window!) -->
+      <div id="inline-scramble" class="inline-scramble-box">
+        <div class="answer-slots" id="spell-slots"></div>
+        <div class="letter-bank" id="spell-bank"></div>
+      </div>
+
+      <div class="progress-pill" id="prompt-progress">Word 1 / 8</div>
+    </div>
+
+    <!-- Interactive Playfield -->
+    <div id="minigame-playfield"></div>
+
+    <!-- Pet Stage (Centered on the Rug) -->
+    <div class="pet-stage-container" id="pet-stage-container">
+      <div class="pet-sprite-wrap" id="pet-sprite-wrap">
+        <div class="pet-anim-box" id="pet-anim-box">
+          <img id="main-pet-img" class="pet-sprite" alt="Pet" />
+          <img id="evolve-pet-img" class="pet-sprite-evolve" alt="Evolving Pet" />
+          <div id="main-pet-svg" class="pet-sprite" style="display:none;"></div>
+
+          <!-- Transparent Foam Overlay for Wash Minigame -->
+          <svg id="foam-overlay" class="foam-overlay" viewBox="0 0 300 300">
+            <g fill="#ffffff" stroke="#e0f7fa" stroke-width="3">
+              <circle cx="95" cy="210" r="58" />
+              <circle cx="155" cy="220" r="68" />
+              <circle cx="215" cy="205" r="54" />
+              <circle cx="75" cy="150" r="52" />
+              <circle cx="145" cy="150" r="74" />
+              <circle cx="220" cy="145" r="52" />
+              <circle cx="110" cy="95" r="48" />
+              <circle cx="180" cy="95" r="50" />
+              <circle cx="148" cy="58" r="42" />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Care Buttons (Position Randomized on Main Page) -->
+    <div class="action-bar" id="hub-action-bar">
+      <button class="action-btn" id="btn-act-feed" onclick="triggerMinigame('feed')">🍖 Feed</button>
+      <button class="action-btn" id="btn-act-wash" onclick="triggerMinigame('wash')">🫧 Wash</button>
+      <button class="action-btn" id="btn-act-play" onclick="triggerMinigame('play')">⚽ Play</button>
+      <button class="action-btn" id="btn-act-walk" onclick="triggerMinigame('walk')">🌳 Walk</button>
+      <button class="action-btn" id="btn-act-sleep" onclick="triggerMinigame('sleep')">🌙 Sleep</button>
+    </div>
+  </div>
+
+  <!-- SAVED STUDENTS ROSTER MODAL -->
+  <div id="students-modal" class="overlay-modal">
+    <div class="modal-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0; color:var(--dark);">👨‍🎓 Saved Students & Progress</h2>
+        <button class="btn-icon" onclick="closeStudentsModal()">✖ Close</button>
+      </div>
+      <p style="margin:0; color:#333; font-weight:600; font-size:0.95rem;">
+        Click <b>▶ Continue</b> next to any student to load their exact pet, care step, and custom vocabulary list!
+      </p>
+      <div class="student-list-container" id="student-list-container"></div>
+    </div>
+  </div>
+
+  <!-- TEACHER MODE MODAL -->
+  <div id="teacher-modal" class="overlay-modal">
+    <div class="modal-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0; color:var(--dark);">👩‍🏫 Teacher Mode — Custom Vocabulary</h2>
+        <button class="btn-icon" onclick="closeTeacherMode()">✖ Close</button>
+      </div>
+      <p style="margin:0; color:#333; font-weight:600; font-size:0.95rem;">
+        Enter word pairs (one pair per line: <code>English = Russian</code> or <code>English - Russian</code>). Saved automatically for the active student!
+      </p>
+
+      <div class="preset-row">
+        <button class="preset-btn" onclick="loadPreset('animals')">🐾 Food & Treats</button>
+        <button class="preset-btn" onclick="loadPreset('food')">🍎 More Food</button>
+        <button class="preset-btn" onclick="loadPreset('home')">🏠 Home & Rooms</button>
+        <button class="preset-btn" onclick="loadPreset('verbs')">🏃 Action Verbs</button>
+      </div>
+
+      <textarea id="vocab-textarea" spellcheck="false"></textarea>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <span id="teacher-status-msg" style="color:var(--green); font-weight:800;"></span>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-icon" onclick="copyShareLink()">🔗 Copy Student Link</button>
+          <button class="btn-primary" style="padding:10px 28px; font-size:1.05rem;" onclick="saveTeacherVocab()">💾 Save & Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* =========================================================================
+   * 1. PET FAMILIES, STAGES & "images/" FOLDER ASSET MAPPING
+   * ========================================================================= */
+  const PET_FAMILIES = {
+    feline: {
+      baby: 'kitten',
+      adult: 'cat',
+      defaultName: 'Ginger',
+      foodType: 'fish',
+      soundType: 'meow'
+    },
+    canine: {
+      baby: 'puppy',
+      adult: 'dog',
+      defaultName: 'Buddy',
+      foodType: 'bone',
+      soundType: 'bark'
+    },
+    avian: {
+      baby: 'chick',
+      adult: 'chicken',
+      defaultName: 'Sunny',
+      foodType: 'worm',
+      soundType: 'peep'
+    }
+  };
+
+  const STATES = ['base', 'hungry', 'bored', 'playing', 'happy', 'excited', 'walking', 'dirty', 'wet', 'sleepy', 'sleeping'];
+
+  function buildStageSprites(stageName, extraFallbacks = {}) {
+    const map = {};
+    STATES.forEach(st => {
+      const semantic = `${st}${stageName}.png`;
+      const list = [`images/${semantic}`, semantic];
+      if (extraFallbacks[st]) {
+        extraFallbacks[st].forEach(f => {
+          list.push(`images/${f}`, f);
+        });
+      }
+      map[st] = list;
+    });
+    return map;
+  }
+
+  const ASSET_MAP = {
+    backgrounds: {
+      room: ['images/Room.jpg', 'images/1000169381.jpg', 'Room.jpg', '1000169381.jpg', 'images/1000169105.jpg'],
+      bathroom: ['images/Bathroom.jpg', 'images/bathroom.jpg', 'Bathroom.jpg', 'bathroom.jpg', 'images/1000169106.jpg'],
+      outside: ['images/outside.jpg', 'outside.jpg', 'images/1000169107.jpg', '1000169107.jpg']
+    },
+    kitten: buildStageSprites('kitten', {
+      base: ['1000169094.png'],
+      hungry: ['1000169099.png'],
+      bored: ['1000169095.png'],
+      playing: ['1000169100.png'],
+      happy: ['1000169098.png'],
+      excited: ['1000169097.png'],
+      walking: ['1000169103.png'],
+      dirty: ['1000169096.png'],
+      wet: ['1000169104.png'],
+      sleepy: ['1000169102.png'],
+      sleeping: ['1000169101.png']
+    }),
+    cat: buildStageSprites('cat', {
+      base: ['1000170037.png'],
+      happy: ['1000170037.png'],
+      walking: ['1000170041.png']
+    }),
+    puppy: buildStageSprites('puppy', {
+      base: ['1000170040.png'],
+      happy: ['1000170040.png'],
+      walking: ['1000170043.png']
+    }),
+    dog: buildStageSprites('dog', {
+      base: ['1000170039.png'],
+      hungry: ['1000170123.png'],
+      bored: ['1000170127.png'],
+      playing: ['1000170121.png'],
+      happy: ['1000170126.png', '1000170039.png'],
+      excited: ['1000170124.png'],
+      walking: ['1000170122.png', '1000170044.png'],
+      dirty: ['1000170125.png'],
+      wet: ['1000170120.png'],
+      sleepy: ['1000170129.png'],
+      sleeping: ['1000170128.png']
+    }),
+    chick: buildStageSprites('chick', {
+      base: ['1000170046.png'],
+      happy: ['1000170046.png'],
+      walking: ['1000170045.png']
+    }),
+    chicken: buildStageSprites('chicken', {
+      base: ['1000170038.png'],
+      happy: ['1000170038.png'],
+      walking: ['1000170042.png']
+    })
+  };
+
+  const resolvedBg = {};
+  function resolveBackground(key) {
+    if (resolvedBg[key]) {
+      document.getElementById('game-wrapper').style.backgroundImage = `url('${resolvedBg[key]}')`;
+      return;
+    }
+    const candidates = ASSET_MAP.backgrounds[key] || [];
+    function tryLoad(idx) {
+      if (idx >= candidates.length) return;
+      const img = new Image();
+      img.onload = () => {
+        resolvedBg[key] = candidates[idx];
+        document.getElementById('game-wrapper').style.backgroundImage = `url('${candidates[idx]}')`;
+      };
+      img.onerror = () => tryLoad(idx + 1);
+      img.src = candidates[idx];
+    }
+    tryLoad(0);
+  }
+
+  function setSpriteImage(imgEl, svgEl, stageKey, state) {
+    const wrap = document.getElementById('pet-sprite-wrap');
+    if (wrap && imgEl.id === 'main-pet-img') {
+      const isWide = (state === 'sleepy' || state === 'sleeping' || (stageKey === 'dog' && state === 'hungry'));
+      if (isWide) {
+        wrap.classList.add('wide-pose-wrap');
+      } else {
+        wrap.classList.remove('wide-pose-wrap');
+      }
+    }
+
+    const stageMap = ASSET_MAP[stageKey] || ASSET_MAP.kitten;
+    const candidates = [...(stageMap[state] || []), ...(stageMap.base || [])];
+
+    let idx = 0;
+    imgEl.style.display = 'block';
+    if (svgEl) svgEl.style.display = 'none';
+
+    const tryNext = () => {
+      if (idx < candidates.length) {
+        imgEl.src = candidates[idx++];
+      } else {
+        imgEl.style.display = 'none';
+        if (svgEl) {
+          svgEl.style.display = 'block';
+          svgEl.innerHTML = generatePetSVG(stageKey, state);
+        }
+      }
+    };
+    imgEl.onerror = tryNext;
+    tryNext();
+  }
+
+  function generatePetSVG(stageKey, state) {
+    const isCanine = stageKey === 'puppy' || stageKey === 'dog';
+    const isAvian  = stageKey === 'chick' || stageKey === 'chicken';
+    const bodyColor = isCanine ? '#d99b66' : (isAvian ? '#ffdf5d' : '#ff9f43');
+    const earColor  = isCanine ? '#8c5327' : (isAvian ? '#ffab00' : '#e67e22');
+    const bellyColor = isCanine ? '#f7e1cb' : '#fff5ba';
+
+    let eyesMarkup = `<circle cx="105" cy="120" r="14" fill="#222"/><circle cx="155" cy="120" r="14" fill="#222"/><circle cx="100" cy="114" r="5" fill="#fff"/><circle cx="150" cy="114" r="5" fill="#fff"/>`;
+    if (state === 'sleeping') {
+      eyesMarkup = `<path d="M90 120 Q105 132 120 120" stroke="#222" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M140 120 Q155 132 170 120" stroke="#222" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+    } else if (state === 'sleepy' || state === 'bored') {
+      eyesMarkup = `<circle cx="105" cy="122" r="13" fill="#222"/><circle cx="155" cy="122" r="13" fill="#222"/><rect x="88" y="105" width="35" height="14" fill="${bodyColor}"/><rect x="138" y="105" width="35" height="14" fill="${bodyColor}"/>`;
+    }
+
+    let mouthMarkup = `<path d="M120 142 Q130 152 140 142" stroke="#222" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+    if (state === 'happy' || state === 'excited' || state === 'playing') {
+      mouthMarkup = `<path d="M115 140 Q130 165 145 140 Z" fill="#ff5c77" stroke="#222" stroke-width="3"/>`;
+    }
+
+    const comb = stageKey === 'chicken'
+      ? `<path d="M112 65 C115 40, 128 45, 130 58 C135 42, 148 48, 146 66 Z" fill="#e63946"/>`
+      : '';
+
+    return `
+      <svg viewBox="0 0 260 260" width="100%" height="100%">
+        ${comb}
+        ${isCanine
+          ? `<ellipse cx="70" cy="115" rx="22" ry="42" transform="rotate(18 70 115)" fill="${earColor}"/>
+             <ellipse cx="190" cy="115" rx="22" ry="42" transform="rotate(-18 190 115)" fill="${earColor}"/>`
+          : `<path d="M115 65 Q130 35 145 65" fill="${earColor}"/>`}
+        <ellipse cx="130" cy="195" rx="58" ry="52" fill="${bodyColor}"/>
+        <ellipse cx="130" cy="200" rx="36" ry="38" fill="${bellyColor}"/>
+        <circle cx="130" cy="122" r="56" fill="${bodyColor}"/>
+        ${eyesMarkup}
+        ${isAvian
+          ? `<polygon points="122,130 138,130 130,144" fill="#ff7b00"/>${mouthMarkup}`
+          : `<ellipse cx="130" cy="133" rx="10" ry="7" fill="#3a2312"/>${mouthMarkup}`}
+      </svg>`;
+  }
+
+  /* =========================================================================
+   * 2. VOCABULARY PRESETS & TEACHER STORAGE
+   * ========================================================================= */
+  const PRESETS = {
+    animals: [
+      { en: 'apple', ru: 'яблоко' },
+      { en: 'milk', ru: 'молоко' },
+      { en: 'cheese', ru: 'сыр' },
+      { en: 'bread', ru: 'хлеб' },
+      { en: 'water', ru: 'вода' },
+      { en: 'juice', ru: 'сок' },
+      { en: 'cake', ru: 'торт' },
+      { en: 'carrot', ru: 'морковь' }
+    ],
+    food: [
+      { en: 'banana', ru: 'банан' },
+      { en: 'orange', ru: 'апельсин' },
+      { en: 'chicken', ru: 'курица' },
+      { en: 'soup', ru: 'суп' },
+      { en: 'butter', ru: 'масло' },
+      { en: 'egg', ru: 'яйцо' },
+      { en: 'sweet', ru: 'конфета' },
+      { en: 'ice cream', ru: 'мороженое' }
+    ],
+    home: [
+      { en: 'window', ru: 'окно' },
+      { en: 'chair', ru: 'стул' },
+      { en: 'table', ru: 'стол' },
+      { en: 'mirror', ru: 'зеркало' },
+      { en: 'pillow', ru: 'подушка' },
+      { en: 'blanket', ru: 'одеяло' },
+      { en: 'carpet', ru: 'ковёр' },
+      { en: 'kitchen', ru: 'кухня' }
+    ],
+    verbs: [
+      { en: 'jump', ru: 'прыгать' },
+      { en: 'run', ru: 'бегать' },
+      { en: 'swim', ru: 'плавать' },
+      { en: 'dance', ru: 'танцевать' },
+      { en: 'read', ru: 'читать' },
+      { en: 'write', ru: 'писать' },
+      { en: 'sing', ru: 'петь' },
+      { en: 'sleep', ru: 'спать' }
+    ]
+  };
+
+  let vocabularyList = [...PRESETS.animals];
+
+  function initVocabFromStorageOrUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const shared = params.get('words');
+    if (shared) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(shared)));
+        if (Array.isArray(decoded) && decoded.length > 0) {
+          vocabularyList = decoded;
+          return;
+        }
+      } catch (e) {}
+    }
+    const saved = localStorage.getItem('tamagotchi_custom_vocab');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          vocabularyList = parsed;
+        }
+      } catch (e) {}
+    }
+  }
+
+  /* =========================================================================
+   * 3. SPECIES-SPECIFIC SOUNDS (MEOW, BARK, PEEP/CLUCK, PURR, BALL HIT)
+   * ========================================================================= */
+  let soundEnabled = true;
+  let audioCtx = null;
+  let purrNodes = null;
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    if (!soundEnabled) stopPurrSound();
+    document.getElementById('btn-sound').textContent = soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+  }
+
+  function startPurrSound() {
+    if (!soundEnabled || purrNodes) return;
+    ensureAudio();
+    const now = audioCtx.currentTime;
+
+    const carrier = audioCtx.createOscillator();
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    const masterGain = audioCtx.createGain();
+
+    const baseFreq = selectedFamily === 'avian' ? 55 : (selectedFamily === 'canine' ? 36 : 27);
+    carrier.type = 'sawtooth';
+    carrier.frequency.setValueAtTime(baseFreq, now);
+
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(3.2, now);
+    lfoGain.gain.setValueAtTime(0.08, now);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(160, now);
+
+    masterGain.gain.setValueAtTime(0.12, now);
+
+    lfo.connect(lfoGain);
+    lfoGain.connect(masterGain.gain);
+    carrier.connect(filter);
+    filter.connect(masterGain);
+    masterGain.connect(audioCtx.destination);
+
+    carrier.start(now);
+    lfo.start(now);
+
+    purrNodes = { carrier, lfo, masterGain };
+  }
+
+  function stopPurrSound() {
+    if (!purrNodes) return;
+    try {
+      purrNodes.carrier.stop();
+      purrNodes.lfo.stop();
+      purrNodes.masterGain.disconnect();
+    } catch (e) {}
+    purrNodes = null;
+  }
+
+  function playPetVoiceSound() {
+    const familyInfo = PET_FAMILIES[selectedFamily];
+    playSfx(familyInfo.soundType);
+  }
+
+  function playSfx(type) {
+    if (!soundEnabled) return;
+    ensureAudio();
+    const now = audioCtx.currentTime;
+
+    if (type === 'meow') {
+      const pitchMult = currentRound === 1 ? 0.82 : 1.0;
+      const osc = audioCtx.createOscillator();
+      const filter = audioCtx.createBiquadFilter();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(540 * pitchMult, now);
+      osc.frequency.exponentialRampToValueAtTime(980 * pitchMult, now + 0.14);
+      osc.frequency.exponentialRampToValueAtTime(640 * pitchMult, now + 0.42);
+
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1100 * pitchMult, now);
+      filter.Q.setValueAtTime(2.2, now);
+
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.28, now + 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.44);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.45);
+    } else if (type === 'bark') {
+      const pitchMult = currentRound === 1 ? 0.72 : 1.0;
+      [0, 0.18].forEach(offset => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(260 * pitchMult, now + offset);
+        osc.frequency.exponentialRampToValueAtTime(420 * pitchMult, now + offset + 0.05);
+        osc.frequency.exponentialRampToValueAtTime(140 * pitchMult, now + offset + 0.14);
+
+        gain.gain.setValueAtTime(0.25, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.15);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.16);
+      });
+    } else if (type === 'peep') {
+      const isAdultChicken = currentRound === 1;
+      [0, 0.14].forEach(offset => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = isAdultChicken ? 'triangle' : 'sine';
+        const startF = isAdultChicken ? 520 : 1350;
+        const peakF  = isAdultChicken ? 780 : 1950;
+        osc.frequency.setValueAtTime(startF, now + offset);
+        osc.frequency.exponentialRampToValueAtTime(peakF, now + offset + 0.05);
+        osc.frequency.exponentialRampToValueAtTime(startF * 0.85, now + offset + 0.11);
+
+        gain.gain.setValueAtTime(0.22, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.12);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.13);
+      });
+    } else if (type === 'hit') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(190, now);
+      osc.frequency.exponentialRampToValueAtTime(42, now + 0.14);
+
+      gain.gain.setValueAtTime(0.38, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    } else if (type === 'correct') {
+      [523.25, 659.25, 783.99].forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        gain.gain.setValueAtTime(0.16, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.25);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.26);
+      });
+    } else if (type === 'wrong') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.linearRampToValueAtTime(130, now + 0.25);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'fanfare') {
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+        gain.gain.setValueAtTime(0.22, now + idx * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.45);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + idx * 0.12);
+        osc.stop(now + idx * 0.12 + 0.46);
+      });
+    } else if (type === 'pop') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(850, now + 0.09);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.11);
+    }
+  }
+
+  function speakEnglish(text) {
+    if (!soundEnabled || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';
+    utter.rate = 0.92;
+    window.speechSynthesis.speak(utter);
+  }
+
+  /* =========================================================================
+   * 4. MULTI-STUDENT ROSTER, GUEST MODE & CHARACTER SELECTION
+   * ========================================================================= */
+  const CARE_SEQUENCE = [
+    { step: 0, action: 'feed',  needState: 'hungry',  thought: "I'm hungry!" },
+    { step: 1, action: 'play',  needState: 'bored',   thought: "I'm bored!" },
+    { step: 2, action: 'walk',  needState: 'excited', thought: "I'm excited!" },
+    { step: 3, action: 'wash',  needState: 'dirty',   thought: "I'm dirty!" },
+    { step: 4, action: 'feed',  needState: 'hungry',  thought: "I'm hungry!" },
+    { step: 5, action: 'sleep', needState: 'sleepy',  thought: "I'm sleepy!" }
+  ];
+
+  let isGuestMode = false;
+  let studentName = '';
+  let selectedFamily = 'feline';
+  let currentRound = 0; // 0 = Baby, 1 = Adult
+  let petName = 'Ginger';
+  let currentStepIndex = 0;
+  let isFirstRoomVisit = true;
+  let inMinigame = false;
+  let activeMinigameType = null;
+  let currentMinigameWords = [];
+  let currentWordIdx = 0;
+  let hubTransitionTimer = null;
+
+  let feedMealsCompleted = 0;
+  let playCompleted = false;
+  let walkCompleted = false;
+  let washCompleted = false;
+  let sleepCompleted = false;
+
+  function getActiveStageKey() {
+    const fam = PET_FAMILIES[selectedFamily];
+    return currentRound === 0 ? fam.baby : fam.adult;
+  }
+
+  function updateStageSize() {
+    const stageKey = getActiveStageKey();
+    const wrap = document.getElementById('pet-sprite-wrap');
+    wrap.classList.remove('adult-pet', 'chick-size');
+
+    if (currentRound === 1) {
+      wrap.classList.add('adult-pet');
+    } else if (stageKey === 'chick') {
+      wrap.classList.add('chick-size');
+    }
+  }
+
+  function shuffleActionButtons() {
+    const bar = document.getElementById('hub-action-bar');
+    const buttons = Array.from(bar.children);
+    for (let i = buttons.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      bar.appendChild(buttons[j]);
+      buttons.splice(j, 1);
+    }
+  }
+
+  function getAllSavedStudents() {
+    try {
+      const raw = localStorage.getItem('tamagotchi_students_db');
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveStudentProgress() {
+    if (isGuestMode || !studentName) return;
+    const db = getAllSavedStudents();
+    const key = studentName.trim().toLowerCase();
+    db[key] = {
+      studentName: studentName.trim(),
+      selectedFamily,
+      petName,
+      currentRound,
+      currentStepIndex,
+      feedMealsCompleted,
+      playCompleted,
+      walkCompleted,
+      washCompleted,
+      sleepCompleted,
+      vocabularyList: [...vocabularyList],
+      updatedAt: Date.now()
+    };
+    localStorage.setItem('tamagotchi_students_db', JSON.stringify(db));
+  }
+
+  function openStudentsModal() {
+    renderStudentsRoster();
+    document.getElementById('students-modal').classList.add('active');
+  }
+
+  function closeStudentsModal() {
+    document.getElementById('students-modal').classList.remove('active');
+  }
+
+  function renderStudentsRoster() {
+    const container = document.getElementById('student-list-container');
+    container.innerHTML = '';
+    const db = getAllSavedStudents();
+    const keys = Object.keys(db).sort((a, b) => (db[b].updatedAt || 0) - (db[a].updatedAt || 0));
+
+    if (keys.length === 0) {
+      container.innerHTML = `<div style="padding:18px; text-align:center; font-weight:700; color:#666;">No saved students yet. Enter a student's name on the start screen and click "Start & Save Student"!</div>`;
+      return;
+    }
+
+    keys.forEach(k => {
+      const s = db[k];
+      const fam = PET_FAMILIES[s.selectedFamily] || PET_FAMILIES.feline;
+      const stageName = (s.currentRound === 0 ? fam.baby : fam.adult).toUpperCase();
+      const wordCount = Array.isArray(s.vocabularyList) ? s.vocabularyList.length : vocabularyList.length;
+
+      const row = document.createElement('div');
+      row.className = 'student-row-card';
+      row.innerHTML = `
+        <div class="student-info-col">
+          <div class="student-name-title">👨‍🎓 ${s.studentName} — 🐾 ${stageName}</div>
+          <div class="student-meta-sub">Step ${Math.min(6, (s.currentStepIndex || 0) + 1)}/6 • 📚 ${wordCount} words</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-primary" style="padding:8px 18px; font-size:0.95rem;" onclick="loadStudentFromRoster('${k}')">▶ Continue</button>
+          <button class="btn-icon" style="color:#e63946;" onclick="deleteStudentFromRoster('${k}')">🗑</button>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  function loadStudentFromRoster(key) {
+    ensureAudio();
+    const db = getAllSavedStudents();
+    const d = db[key];
+    if (!d) return;
+
+    isGuestMode        = false;
+    studentName        = d.studentName;
+    selectedFamily     = d.selectedFamily || 'feline';
+    petName            = d.petName || PET_FAMILIES[selectedFamily].defaultName;
+    currentRound       = d.currentRound || 0;
+    currentStepIndex   = d.currentStepIndex || 0;
+    feedMealsCompleted = d.feedMealsCompleted || 0;
+    playCompleted      = !!d.playCompleted;
+    walkCompleted      = !!d.walkCompleted;
+    washCompleted      = !!d.washCompleted;
+    sleepCompleted     = !!d.sleepCompleted;
+    if (Array.isArray(d.vocabularyList) && d.vocabularyList.length >= 4) {
+      vocabularyList = [...d.vocabularyList];
+    }
+    isFirstRoomVisit = false;
+
+    if (currentStepIndex >= CARE_SEQUENCE.length) {
+      currentStepIndex = 0;
+      resetSatisfactionBars();
+    }
+
+    closeStudentsModal();
+    document.getElementById('congrats-banner').style.display = 'none';
+    document.getElementById('side-stats').style.display = 'flex';
+    updateStageSize();
+    showScreen('screen-main');
+    enterMainHub();
+  }
+
+  function deleteStudentFromRoster(key) {
+    const db = getAllSavedStudents();
+    delete db[key];
+    localStorage.setItem('tamagotchi_students_db', JSON.stringify(db));
+    renderStudentsRoster();
+  }
+
+  function selectCharacterStage(familyKey, roundNumber, cardEl) {
+    selectedFamily = familyKey;
+    currentRound = roundNumber;
+    petName = PET_FAMILIES[familyKey].defaultName;
+    document.querySelectorAll('.pet-card').forEach(c => c.classList.remove('selected'));
+    cardEl.classList.add('selected');
+    playSfx('pop');
+  }
+
+  function startSavedStudentGame() {
+    ensureAudio();
+    const rawStudent = document.getElementById('student-name-input').value.trim();
+    if (!rawStudent) {
+      const inp = document.getElementById('student-name-input');
+      inp.classList.add('shake');
+      inp.focus();
+      setTimeout(() => inp.classList.remove('shake'), 450);
+      return;
+    }
+    isGuestMode = false;
+    studentName = rawStudent;
+    petName = PET_FAMILIES[selectedFamily].defaultName;
+    currentStepIndex = 0;
+    isFirstRoomVisit = true;
+    resetSatisfactionBars();
+    saveStudentProgress();
+
+    document.getElementById('congrats-banner').style.display = 'none';
+    document.getElementById('side-stats').style.display = 'flex';
+    updateStageSize();
+    showScreen('screen-main');
+    enterMainHub();
+  }
+
+  function startGuestGame() {
+    ensureAudio();
+    isGuestMode = true;
+    studentName = 'Guest';
+    petName = PET_FAMILIES[selectedFamily].defaultName;
+    currentStepIndex = 0;
+    isFirstRoomVisit = true;
+    resetSatisfactionBars();
+
+    document.getElementById('congrats-banner').style.display = 'none';
+    document.getElementById('side-stats').style.display = 'flex';
+    updateStageSize();
+    showScreen('screen-main');
+    enterMainHub();
+  }
+
+  function resetSatisfactionBars() {
+    feedMealsCompleted = 0;
+    playCompleted = false;
+    walkCompleted = false;
+    washCompleted = false;
+    sleepCompleted = false;
+    renderSatisfactionBars();
+  }
+
+  function renderSatisfactionBars() {
+    const totalWords = currentMinigameWords.length || 8;
+    const currentProgressFraction = inMinigame ? (currentWordIdx / totalWords) : 0;
+
+    let fullPct = feedMealsCompleted * 50;
+    if (inMinigame && activeMinigameType === 'feed' && feedMealsCompleted < 2) {
+      fullPct += currentProgressFraction * 50;
+    }
+    fullPct = Math.min(100, Math.round(fullPct));
+
+    let happyPct = (playCompleted ? 50 : 0) + (walkCompleted ? 50 : 0);
+    if (inMinigame && activeMinigameType === 'play' && !playCompleted) {
+      happyPct += currentProgressFraction * 50;
+    } else if (inMinigame && activeMinigameType === 'walk' && !walkCompleted) {
+      happyPct += currentProgressFraction * 50;
+    }
+    happyPct = Math.min(100, Math.round(happyPct));
+
+    let cleanPct = washCompleted ? 100 : 0;
+    if (inMinigame && activeMinigameType === 'wash' && !washCompleted) {
+      cleanPct = Math.round(currentProgressFraction * 100);
+    }
+
+    let sleepyPct = sleepCompleted ? 100 : 0;
+    if (inMinigame && activeMinigameType === 'sleep' && !sleepCompleted) {
+      sleepyPct = Math.round(currentProgressFraction * 100);
+    }
+
+    document.getElementById('bar-full').style.width = `${fullPct}%`;
+    document.getElementById('pct-full').textContent = `${fullPct}%`;
+
+    document.getElementById('bar-happy').style.width = `${happyPct}%`;
+    document.getElementById('pct-happy').textContent = `${happyPct}%`;
+
+    document.getElementById('bar-clean').style.width = `${cleanPct}%`;
+    document.getElementById('pct-clean').textContent = `${cleanPct}%`;
+
+    document.getElementById('bar-sleepy').style.width = `${sleepyPct}%`;
+    document.getElementById('pct-sleepy').textContent = `${sleepyPct}%`;
+  }
+
+  function resetToIntro() {
+    clearTimeout(hubTransitionTimer);
+    stopPurrSound();
+    inMinigame = false;
+    cleanupMinigameField();
+    document.getElementById('side-stats').style.display = 'none';
+    document.getElementById('congrats-banner').style.display = 'none';
+    resolveBackground('room');
+    showScreen('screen-intro');
+  }
+
+  function returnToHubEarly() {
+    clearTimeout(hubTransitionTimer);
+    stopPurrSound();
+    inMinigame = false;
+    enterMainHub();
+  }
+
+  function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+  }
+
+  /* =========================================================================
+   * 5. MAIN HUB, RANDOMIZED BUTTONS & EVOLUTION TRANSITION
+   * ========================================================================= */
+  function enterMainHub() {
+    inMinigame = false;
+    activeMinigameType = null;
+    cleanupMinigameField();
+    updateStageSize();
+    renderSatisfactionBars();
+    saveStudentProgress();
+
+    document.getElementById('btn-back-hub').style.display = 'none';
+    document.getElementById('congrats-banner').style.display = 'none';
+
+    resolveBackground('room');
+    shuffleActionButtons();
+    document.getElementById('hub-action-bar').style.display = 'flex';
+    document.getElementById('minigame-banner').style.display = 'none';
+    document.getElementById('hub-thought').style.display = 'block';
+
+    const wrap = document.getElementById('pet-sprite-wrap');
+    wrap.classList.remove('walk-mode');
+    wrap.style.left = '50%';
+
+    const stageInfo = CARE_SEQUENCE[currentStepIndex] || CARE_SEQUENCE[0];
+
+    if (isFirstRoomVisit) {
+      isFirstRoomVisit = false;
+      setMainPetSprite('base');
+      document.getElementById('hub-thought').textContent = 'Hi!';
+
+      clearTimeout(hubTransitionTimer);
+      hubTransitionTimer = setTimeout(() => {
+        setMainPetSprite(stageInfo.needState);
+        document.getElementById('hub-thought').textContent = stageInfo.thought;
+        playSfx('pop');
+      }, 1100);
+    } else {
+      setMainPetSprite(stageInfo.needState);
+      document.getElementById('hub-thought').textContent = stageInfo.thought;
+    }
+  }
+
+  function setMainPetSprite(state) {
+    const imgEl = document.getElementById('main-pet-img');
+    const svgEl = document.getElementById('main-pet-svg');
+    setSpriteImage(imgEl, svgEl, getActiveStageKey(), state);
+  }
+
+  /* =========================================================================
+   * 6. MINIGAME ROUTER, IN-PLACE EVOLUTION & IN-PLACE CONGRATULATIONS
+   * ========================================================================= */
+  function prepareMinigameWords(exactCount = 8) {
+    const pool = [...vocabularyList];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const result = [];
+    while (result.length < exactCount && pool.length > 0) {
+      result.push(pool[result.length % pool.length]);
+    }
+    return result.slice(0, exactCount);
+  }
+
+  function getOptionsForWord(correctItem, count = 6) {
+    const others = vocabularyList.filter(w => w.en.toLowerCase() !== correctItem.en.toLowerCase());
+    for (let i = others.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [others[i], others[j]] = [others[j], others[i]];
+    }
+    const choices = [correctItem, ...others.slice(0, Math.min(count - 1, others.length))];
+    for (let i = choices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [choices[i], choices[j]] = [choices[j], choices[i]];
+    }
+    return choices;
+  }
+
+  function triggerMinigame(actionType) {
+    clearTimeout(hubTransitionTimer);
+    stopPurrSound();
+    inMinigame = true;
+    activeMinigameType = actionType;
+    const targetLen = actionType === 'walk' ? 8 : Math.min(8, vocabularyList.length);
+    currentMinigameWords = prepareMinigameWords(targetLen);
+    currentWordIdx = 0;
+    renderSatisfactionBars();
+
+    document.getElementById('congrats-banner').style.display = 'none';
+    document.getElementById('hub-action-bar').style.display = 'none';
+    document.getElementById('hub-thought').style.display = 'none';
+    document.getElementById('minigame-banner').style.display = 'flex';
+    document.getElementById('inline-scramble').classList.remove('active');
+    document.getElementById('btn-back-hub').style.display = 'flex';
+
+    const wrap = document.getElementById('pet-sprite-wrap');
+    wrap.classList.remove('walk-mode');
+    wrap.style.left = '50%';
+
+    if (actionType === 'feed') startFeedMinigame();
+    else if (actionType === 'play') startPlayMinigame();
+    else if (actionType === 'walk') startWalkMinigame();
+    else if (actionType === 'wash') startWashMinigame();
+    else if (actionType === 'sleep') startSleepMinigame();
+  }
+
+  function updatePromptHeader(instructionText) {
+    const wordObj = currentMinigameWords[currentWordIdx];
+    document.getElementById('minigame-instruction').textContent = instructionText;
+    document.getElementById('prompt-russian-word').textContent = wordObj.ru;
+    document.getElementById('prompt-progress').textContent = `Word ${currentWordIdx + 1} / ${currentMinigameWords.length}`;
+  }
+
+  function cleanupMinigameField() {
+    stopPurrSound();
+    document.getElementById('minigame-playfield').innerHTML = '';
+    document.getElementById('foam-overlay').style.opacity = '0';
+    document.getElementById('inline-scramble').classList.remove('active');
+    document.getElementById('floating-hand').style.display = 'none';
+    const wrap = document.getElementById('pet-sprite-wrap');
+    wrap.onpointerdown = null;
+    wrap.onpointermove = null;
+    wrap.onpointerup = null;
+    wrap.onpointerleave = null;
+    const animBox = document.getElementById('pet-anim-box');
+    animBox.className = 'pet-anim-box';
+  }
+
+  function finishMinigameInPlace(finalSpriteState = 'happy', bannerText = 'Yay!') {
+    if (activeMinigameType === 'feed') {
+      feedMealsCompleted = Math.min(2, feedMealsCompleted + 1);
+    } else if (activeMinigameType === 'play') {
+      playCompleted = true;
+    } else if (activeMinigameType === 'walk') {
+      walkCompleted = true;
+    } else if (activeMinigameType === 'wash') {
+      washCompleted = true;
+    } else if (activeMinigameType === 'sleep') {
+      sleepCompleted = true;
+    }
+
+    inMinigame = false;
+    renderSatisfactionBars();
+    cleanupMinigameField();
+    playSfx('fanfare');
+    launchConfetti();
+
+    setMainPetSprite(finalSpriteState);
+    const animBox = document.getElementById('pet-anim-box');
+    if (finalSpriteState !== 'sleeping') {
+      animBox.classList.add('pet-bounce');
+    }
+
+    document.getElementById('minigame-banner').style.display = 'none';
+    const thought = document.getElementById('hub-thought');
+    thought.style.display = 'block';
+    thought.textContent = bannerText;
+
+    const expected = CARE_SEQUENCE[currentStepIndex];
+    if (expected && expected.action === activeMinigameType) {
+      currentStepIndex++;
+    } else if (activeMinigameType === 'sleep' && currentStepIndex === 5) {
+      currentStepIndex++;
+    }
+
+    saveStudentProgress();
+
+    if (currentStepIndex >= CARE_SEQUENCE.length || (activeMinigameType === 'sleep' && currentStepIndex >= 5)) {
+      if (currentRound === 0) {
+        runBabyToAdultEvolution();
+        return;
+      } else {
+        showInPlaceCongratulations();
+        return;
+      }
+    }
+
+    setTimeout(() => {
+      animBox.classList.remove('pet-bounce');
+      enterMainHub();
+    }, 2300);
+  }
+
+  function runBabyToAdultEvolution() {
+    const fam = PET_FAMILIES[selectedFamily];
+    const mainImg = document.getElementById('main-pet-img');
+    const evolveImg = document.getElementById('evolve-pet-img');
+    const thought = document.getElementById('hub-thought');
+
+    setSpriteImage(mainImg, document.getElementById('main-pet-svg'), fam.baby, 'sleeping');
+    setSpriteImage(evolveImg, null, fam.adult, 'sleeping');
+
+    thought.textContent = 'Zzz... ✨';
+
+    setTimeout(() => {
+      playSfx('fanfare');
+      launchConfetti();
+      const wrap = document.getElementById('pet-sprite-wrap');
+      wrap.classList.remove('chick-size');
+      wrap.classList.add('adult-pet', 'wide-pose-wrap');
+      evolveImg.style.opacity = '1';
+      mainImg.style.opacity = '0';
+    }, 1100);
+
+    setTimeout(() => {
+      currentRound = 1;
+      currentStepIndex = 0;
+      isFirstRoomVisit = true;
+      resetSatisfactionBars();
+
+      setSpriteImage(mainImg, document.getElementById('main-pet-svg'), fam.adult, 'sleeping');
+      mainImg.style.opacity = '1';
+      evolveImg.style.opacity = '0';
+      saveStudentProgress();
+    }, 3600);
+
+    setTimeout(() => {
+      enterMainHub();
+    }, 5200);
+  }
+
+  function showInPlaceCongratulations() {
+    document.getElementById('hub-thought').style.display = 'none';
+    document.getElementById('btn-back-hub').style.display = 'none';
+
+    const congrats = document.getElementById('congrats-banner');
+    congrats.style.display = 'block';
+    const who = isGuestMode ? 'Congratulations' : `Congratulations, ${studentName}`;
+    congrats.innerHTML = `🎉 ${who}! 🎉`;
+
+    playSfx('fanfare');
+    launchConfetti();
+  }
+
+  /* =========================================================================
+   * MINIGAME 1: FEED
+   * ========================================================================= */
+  const FISH_PALETTES = [
+    { body1: '#ff6b6b', body2: '#ee5253', fin: '#ff9f43', stripe: '#ffd32a' },
+    { body1: '#48dbfb', body2: '#0abde3', fin: '#ff6b81', stripe: '#ffffff' },
+    { body1: '#ff9ff3', body2: '#f368e0', fin: '#feca57', stripe: '#54a0ff' },
+    { body1: '#1dd1a1', body2: '#10ac84', fin: '#ffdd59', stripe: '#ffffff' },
+    { body1: '#feca57', body2: '#ff9f43', fin: '#ee5253', stripe: '#ffffff' },
+    { body1: '#a29bfe', body2: '#6c5ce7', fin: '#fd79a8', stripe: '#ffeaa7' }
+  ];
+
+  function createFoodSVG(foodType, idx) {
+    if (foodType === 'bone') {
+      return `
+        <svg viewBox="0 0 220 120">
+          <ellipse cx="110" cy="94" rx="80" ry="14" fill="rgba(0,0,0,0.25)" />
+          <path d="M48 42 C25 22, 12 48, 32 62 C12 76, 25 102, 48 82 L172 82 C195 102, 208 76, 188 62 C208 48, 195 22, 172 42 Z"
+                fill="#fff8e7" stroke="#d4a373" stroke-width="4" />
+          <line x1="62" y1="52" x2="158" y2="52" stroke="#ffffff" stroke-width="5" stroke-linecap="round" />
+        </svg>`;
+    } else if (foodType === 'worm') {
+      return `
+        <svg viewBox="0 0 220 120">
+          <ellipse cx="110" cy="95" rx="75" ry="12" fill="rgba(0,0,0,0.24)" />
+          <path d="M28 72 Q60 32 95 65 T162 55 T195 45" fill="none" stroke="#b5179e" stroke-width="28" stroke-linecap="round" />
+          <path d="M28 72 Q60 32 95 65 T162 55 T195 45" fill="none" stroke="#f72585" stroke-width="22" stroke-linecap="round" />
+          <circle cx="196" cy="42" r="4.5" fill="#111" />
+          <circle cx="195" cy="40" r="1.5" fill="#fff" />
+        </svg>`;
+    } else {
+      const palette = FISH_PALETTES[idx % FISH_PALETTES.length];
+      return `
+        <svg viewBox="0 0 220 120">
+          <defs>
+            <linearGradient id="fg_${idx}" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="${palette.body1}" />
+              <stop offset="100%" stop-color="${palette.body2}" />
+            </linearGradient>
+          </defs>
+          <ellipse cx="105" cy="96" rx="78" ry="14" fill="rgba(0,0,0,0.26)" />
+          <path d="M65 26 Q105 4 138 28 Z" fill="${palette.fin}" stroke="#fff" stroke-width="2.5"/>
+          <path d="M155 56 C188 22, 212 36, 196 58 C212 80, 188 94, 155 62 Z" fill="${palette.fin}" stroke="#fff" stroke-width="2.5"/>
+          <ellipse cx="95" cy="58" rx="72" ry="36" fill="url(#fg_${idx})" stroke="#fff" stroke-width="3.5"/>
+          <path d="M85 24 Q98 58 85 92" stroke="${palette.stripe}" stroke-width="5" fill="none" opacity="0.65" stroke-linecap="round"/>
+          <path d="M112 27 Q125 58 112 89" stroke="${palette.stripe}" stroke-width="5" fill="none" opacity="0.65" stroke-linecap="round"/>
+          <ellipse cx="82" cy="40" rx="45" ry="11" fill="rgba(255,255,255,0.35)" />
+          <circle cx="46" cy="49" r="9" fill="#fff"/>
+          <circle cx="43" cy="49" r="5" fill="#111"/>
+        </svg>`;
+    }
+  }
+
+  function isAudioFeedMode() {
+    return currentStepIndex === 4 || feedMealsCompleted >= 1;
+  }
+
+  function startFeedMinigame() {
+    resolveBackground('room');
+    renderFeedWord();
+  }
+
+  function renderFeedWord() {
+    const field = document.getElementById('minigame-playfield');
+    field.innerHTML = '';
+    setMainPetSprite('hungry');
+
+    const foodType = PET_FAMILIES[selectedFamily].foodType;
+    const audioMode = isAudioFeedMode();
+
+    if (audioMode) {
+      updatePromptHeader(`Click each ${foodType} to listen, then drag the right one to your pet:`);
+    } else {
+      updatePromptHeader(`Drag the right ${foodType} from the floor to feed your pet:`);
+    }
+
+    const target = currentMinigameWords[currentWordIdx];
+    const options = getOptionsForWord(target, 6);
+
+    const floorSpots = [
+      { left: '3%',  bottom: '28vh', rot: -5 },
+      { left: '5%',  bottom: '13vh', rot: 4 },
+      { left: '16%', bottom: '2vh',  rot: -3 },
+      { left: '68%', bottom: '2vh',  rot: 5 },
+      { left: '78%', bottom: '13vh', rot: -4 },
+      { left: '80%', bottom: '28vh', rot: 6 }
+    ];
+
+    options.forEach((opt, idx) => {
+      const spot = floorSpots[idx % floorSpots.length];
+      const item = document.createElement('div');
+      item.className = 'food-floor-item';
+      item.style.left = spot.left;
+      item.style.bottom = spot.bottom;
+      item.style.transform = `rotate(${spot.rot}deg)`;
+
+      item.innerHTML = `
+        ${createFoodSVG(foodType, idx)}
+        ${audioMode ? '' : `<span class="food-label">${opt.en}</span>`}
+      `;
+
+      makeDraggableToPet(
+        item,
+        opt,
+        (isCorrect) => {
+          if (isCorrect) {
+            playPetVoiceSound();
+            if (!audioMode) {
+              speakEnglish(opt.en);
+            }
+            item.remove();
+            setMainPetSprite('happy');
+            const animBox = document.getElementById('pet-anim-box');
+            animBox.classList.add('pet-bounce');
+
+            currentWordIdx++;
+            renderSatisfactionBars();
+
+            setTimeout(() => {
+              animBox.classList.remove('pet-bounce');
+              if (currentWordIdx < currentMinigameWords.length) {
+                renderFeedWord();
+              } else {
+                finishMinigameInPlace('happy', 'Yummy! 😋');
+              }
+            }, 900);
+          } else {
+            playSfx('wrong');
+            item.classList.add('shake');
+            setTimeout(() => item.classList.remove('shake'), 450);
+          }
+        },
+        audioMode ? () => speakEnglish(opt.en) : null
+      );
+
+      field.appendChild(item);
+    });
+  }
+
+  /* =========================================================================
+   * MINIGAME 2: PLAY
+   * ========================================================================= */
+  function createFootballSVG() {
+    return `
+      <svg viewBox="0 0 120 120">
+        <defs>
+          <radialGradient id="ballGrad" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="75%" stop-color="#e2eafc"/>
+            <stop offset="100%" stop-color="#adb5bd"/>
+          </radialGradient>
+        </defs>
+        <circle cx="60" cy="60" r="54" fill="url(#ballGrad)" stroke="#212529" stroke-width="3.5"/>
+        <polygon points="60,38 78,51 71,72 49,72 42,51" fill="#212529"/>
+        <polygon points="60,6 73,16 60,25 47,16" fill="#212529"/>
+        <polygon points="109,42 113,60 98,64 93,48" fill="#212529"/>
+        <polygon points="11,42 27,48 22,64 7,60" fill="#212529"/>
+        <polygon points="32,104 45,92 60,101 52,113" fill="#212529"/>
+        <polygon points="88,104 68,113 60,101 75,92" fill="#212529"/>
+        <line x1="60" y1="38" x2="60" y2="25" stroke="#212529" stroke-width="3"/>
+        <line x1="78" y1="51" x2="93" y2="48" stroke="#212529" stroke-width="3"/>
+        <line x1="42" y1="51" x2="27" y2="48" stroke="#212529" stroke-width="3"/>
+        <line x1="71" y1="72" x2="75" y2="92" stroke="#212529" stroke-width="3"/>
+        <line x1="49" y1="72" x2="45" y2="92" stroke="#212529" stroke-width="3"/>
+      </svg>
+    `;
+  }
+
+  function startPlayMinigame() {
+    resolveBackground('room');
+    renderPlayWord();
+  }
+
+  function renderPlayWord() {
+    const field = document.getElementById('minigame-playfield');
+    field.innerHTML = '';
+    setMainPetSprite('happy');
+    updatePromptHeader('Click the right football to kick it to your pet:');
+
+    const target = currentMinigameWords[currentWordIdx];
+    const options = getOptionsForWord(target, 4);
+
+    const positions = [
+      { left: '16%', top: '34%' },
+      { left: '76%', top: '34%' },
+      { left: '16%', top: '64%' },
+      { left: '76%', top: '64%' }
+    ];
+
+    let locked = false;
+
+    options.forEach((opt, idx) => {
+      const ball = document.createElement('div');
+      ball.className = 'football-item';
+      ball.style.left = positions[idx].left;
+      ball.style.top = positions[idx].top;
+      ball.style.animationDelay = `${idx * 0.25}s`;
+      ball.innerHTML = `
+        ${createFootballSVG()}
+        <span class="football-label">${opt.en}</span>
+      `;
+
+      ball.onclick = () => {
+        if (locked) return;
+        if (opt.en === target.en) {
+          locked = true;
+          playSfx('correct');
+          speakEnglish(opt.en);
+
+          ball.style.animation = 'none';
+          ball.style.left = '45%';
+          ball.style.top = '48%';
+
+          setTimeout(() => {
+            setMainPetSprite('playing');
+            const animBox = document.getElementById('pet-anim-box');
+            animBox.classList.add('pet-hit');
+            playSfx('hit');
+            playPetVoiceSound();
+
+            ball.style.left = idx % 2 === 0 ? '90%' : '4%';
+            ball.style.top = '-18%';
+            ball.style.transform = 'scale(0.5) rotate(540deg)';
+
+            currentWordIdx++;
+            renderSatisfactionBars();
+
+            setTimeout(() => {
+              animBox.classList.remove('pet-hit');
+              if (currentWordIdx < currentMinigameWords.length) {
+                renderPlayWord();
+              } else {
+                finishMinigameInPlace('happy', 'Goal! ⚽');
+              }
+            }, 850);
+          }, 430);
+        } else {
+          playSfx('wrong');
+          ball.classList.add('shake');
+          setTimeout(() => ball.classList.remove('shake'), 450);
+        }
+      };
+
+      field.appendChild(ball);
+    });
+  }
+
+  /* =========================================================================
+   * MINIGAME 3: WALK
+   * ========================================================================= */
+  const WALK_START_PCT = 10;
+  const WALK_END_PCT = 82;
+  const WALK_TOTAL_STEPS = 8;
+  const WALK_STEP_SIZE = (WALK_END_PCT - WALK_START_PCT) / WALK_TOTAL_STEPS;
+
+  function startWalkMinigame() {
+    resolveBackground('outside');
+    setMainPetSprite('walking');
+
+    const wrap = document.getElementById('pet-sprite-wrap');
+    wrap.classList.add('walk-mode');
+    wrap.style.left = `${WALK_START_PCT}%`;
+
+    renderWalkScene();
+  }
+
+  function renderWalkScene() {
+    const field = document.getElementById('minigame-playfield');
+    field.innerHTML = '';
+
+    const goalProp = document.createElement('div');
+    goalProp.className = 'walk-goal-prop';
+    goalProp.innerHTML = `
+      <svg viewBox="0 0 140 140" width="115" height="115">
+        <ellipse cx="70" cy="122" rx="58" ry="12" fill="rgba(0,0,0,0.22)"/>
+        <path d="M25 70 L115 70 L102 120 L38 120 Z" fill="#d48c46" stroke="#8c5319" stroke-width="4"/>
+        <path d="M40 70 Q70 20 100 70" fill="none" stroke="#8c5319" stroke-width="6"/>
+        <rect x="20" y="62" width="100" height="14" rx="6" fill="#e76f51"/>
+        <text x="70" y="52" text-anchor="middle" font-size="28">🏁🏆</text>
+      </svg>
+    `;
+    field.appendChild(goalProp);
+
+    const choiceBox = document.createElement('div');
+    choiceBox.className = 'walk-choice-container';
+    field.appendChild(choiceBox);
+
+    renderWalkStepChoices(choiceBox);
+  }
+
+  function advanceWalkSmoothly() {
+    const clampedStep = Math.min(WALK_TOTAL_STEPS, currentWordIdx);
+    const nextLeftPct = WALK_START_PCT + clampedStep * WALK_STEP_SIZE;
+    const wrap = document.getElementById('pet-sprite-wrap');
+    const animBox = document.getElementById('pet-anim-box');
+
+    wrap.style.left = `${nextLeftPct}%`;
+    animBox.classList.remove('walking-step-bob');
+    void animBox.offsetWidth;
+    animBox.classList.add('walking-step-bob');
+  }
+
+  function renderWalkStepChoices(choiceBox) {
+    choiceBox.innerHTML = '';
+    updatePromptHeader(`Step ${currentWordIdx + 1} of 8 — Choose the right word to walk forward:`);
+
+    const target = currentMinigameWords[currentWordIdx];
+    const options = getOptionsForWord(target, 4);
+    let stepLocked = false;
+
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'walk-stone-btn';
+      btn.textContent = opt.en;
+
+      btn.onclick = () => {
+        if (stepLocked) return;
+        if (opt.en === target.en) {
+          stepLocked = true;
+          playSfx('correct');
+          playPetVoiceSound();
+          speakEnglish(opt.en);
+          currentWordIdx++;
+          renderSatisfactionBars();
+          advanceWalkSmoothly();
+
+          if (currentWordIdx < WALK_TOTAL_STEPS) {
+            setTimeout(() => renderWalkStepChoices(choiceBox), 1150);
+          } else {
+            setTimeout(() => {
+              finishMinigameInPlace('happy', 'Great walk! 🌳');
+            }, 1250);
+          }
+        } else {
+          playSfx('wrong');
+          btn.classList.add('shake');
+          setTimeout(() => btn.classList.remove('shake'), 450);
+        }
+      };
+
+      choiceBox.appendChild(btn);
+    });
+  }
+
+  /* =========================================================================
+   * MINIGAME 4: WASH
+   * ========================================================================= */
+  function startWashMinigame() {
+    resolveBackground('bathroom');
+    setMainPetSprite('dirty');
+    const foam = document.getElementById('foam-overlay');
+    foam.style.opacity = '0';
+    renderWashWord();
+  }
+
+  function spawnAmbientMiniBubbles(field) {
+    for (let i = 0; i < 24; i++) {
+      const mini = document.createElement('div');
+      mini.className = 'ambient-mini-bubble';
+      const size = 18 + Math.floor(Math.random() * 32);
+      mini.style.width = `${size}px`;
+      mini.style.height = `${size}px`;
+      mini.style.left = `${4 + Math.random() * 92}%`;
+      mini.style.animationDuration = `${5 + Math.random() * 6}s`;
+      mini.style.animationDelay = `${-Math.random() * 8}s`;
+      field.appendChild(mini);
+    }
+  }
+
+  function renderWashWord() {
+    const field = document.getElementById('minigame-playfield');
+    field.innerHTML = '';
+    updatePromptHeader('Catch the right flying bubble and place it on your pet:');
+
+    spawnAmbientMiniBubbles(field);
+
+    const target = currentMinigameWords[currentWordIdx];
+    const options = getOptionsForWord(target, 6);
+
+    const positions = [
+      { left: '14%', top: '24%' },
+      { left: '76%', top: '22%' },
+      { left: '12%', top: '54%' },
+      { left: '75%', top: '52%' },
+      { left: '26%', top: '34%' },
+      { left: '64%', top: '35%' }
+    ];
+
+    options.forEach((opt, idx) => {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble-item';
+      bubble.style.left = positions[idx].left;
+      bubble.style.top = positions[idx].top;
+      bubble.style.animationDelay = `${idx * -1.1}s`;
+      bubble.textContent = opt.en;
+
+      makeDraggableToPet(bubble, opt, (isCorrect) => {
+        if (isCorrect) {
+          playSfx('pop');
+          playSfx('correct');
+          speakEnglish(opt.en);
+          bubble.remove();
+
+          setMainPetSprite('wet');
+
+          currentWordIdx++;
+          renderSatisfactionBars();
+
+          const total = currentMinigameWords.length;
+          const foamOpacity = Math.min(0.95, 0.2 + (currentWordIdx / total) * 0.75);
+          const foam = document.getElementById('foam-overlay');
+          foam.style.opacity = foamOpacity.toFixed(2);
+          foam.style.transform = `translateX(-50%) scale(${0.92 + (currentWordIdx / total) * 0.18})`;
+
+          setTimeout(() => {
+            if (currentWordIdx < currentMinigameWords.length) {
+              renderWashWord();
+            } else {
+              foam.style.opacity = '0';
+              finishMinigameInPlace('happy', 'All clean! 🫧');
+            }
+          }, 750);
+        } else {
+          playSfx('wrong');
+          bubble.classList.add('shake');
+          setTimeout(() => bubble.classList.remove('shake'), 450);
+        }
+      });
+
+      field.appendChild(bubble);
+    });
+  }
+
+  /* =========================================================================
+   * MINIGAME 5: SLEEP (Top prompt window itself turns into the scramble!)
+   * ========================================================================= */
+  let petDragDistance = 0;
+  let isPettingDrag = false;
+  let lastPetPt = null;
+  let spellingActive = false;
+
+  function startSleepMinigame() {
+    resolveBackground('room');
+    setMainPetSprite('sleepy');
+    renderSleepPettingPhase();
+  }
+
+  function renderSleepPettingPhase() {
+    const field = document.getElementById('minigame-playfield');
+    field.innerHTML = '';
+    spellingActive = false;
+    petDragDistance = 0;
+    isPettingDrag = false;
+    stopPurrSound();
+
+    document.getElementById('inline-scramble').classList.remove('active');
+    updatePromptHeader('Hold and drag across your pet to pet them to sleep:');
+
+    const hud = document.createElement('div');
+    hud.className = 'petting-hud';
+    hud.id = 'petting-hud';
+    hud.innerHTML = `
+      <span style="font-weight:900; font-size:1.05rem; color:var(--dark);">🤚 Hold & Drag across your pet!</span>
+      <div class="petting-bar-bg"><div class="petting-bar-fill" id="pet-bar-fill"></div></div>
+    `;
+    field.appendChild(hud);
+
+    const wrap = document.getElementById('pet-sprite-wrap');
+    const animBox = document.getElementById('pet-anim-box');
+    const handEl = document.getElementById('floating-hand');
+
+    wrap.onpointerdown = (e) => {
+      if (spellingActive) return;
+      e.preventDefault();
+      isPettingDrag = true;
+      lastPetPt = { x: e.clientX, y: e.clientY };
+      handEl.style.display = 'block';
+      handEl.style.left = `${e.clientX}px`;
+      handEl.style.top = `${e.clientY}px`;
+      animBox.classList.add('purr-vibrate');
+      startPurrSound();
+      if (navigator.vibrate) navigator.vibrate(40);
+    };
+
+    wrap.onpointermove = (e) => {
+      if (spellingActive) return;
+      handEl.style.display = 'block';
+      handEl.style.left = `${e.clientX}px`;
+      handEl.style.top = `${e.clientY}px`;
+
+      if (!isPettingDrag || !lastPetPt) return;
+      const dist = Math.hypot(e.clientX - lastPetPt.x, e.clientY - lastPetPt.y);
+      lastPetPt = { x: e.clientX, y: e.clientY };
+      petDragDistance += dist;
+
+      const pct = Math.min(100, (petDragDistance / 320) * 100);
+      const bar = document.getElementById('pet-bar-fill');
+      if (bar) bar.style.width = `${pct}%`;
+
+      if (Math.random() < 0.16) {
+        spawnZzzParticle(e.clientX, e.clientY);
+        if (navigator.vibrate) navigator.vibrate(25);
+      }
+
+      if (petDragDistance >= 320) {
+        isPettingDrag = false;
+        animBox.classList.remove('purr-vibrate');
+        stopPurrSound();
+        transformTopWindowIntoScramble();
+      }
+    };
+
+    const stopDrag = () => {
+      isPettingDrag = false;
+      animBox.classList.remove('purr-vibrate');
+      stopPurrSound();
+    };
+
+    wrap.onpointerup = stopDrag;
+    wrap.onpointerleave = () => {
+      stopDrag();
+      handEl.style.display = 'none';
+    };
+  }
+
+  function spawnZzzParticle(clientX, clientY) {
+    const rect = document.getElementById('game-wrapper').getBoundingClientRect();
+    const z = document.createElement('div');
+    z.className = 'zzz-particle';
+    z.textContent = 'Zzz';
+    z.style.left = `${clientX - rect.left}px`;
+    z.style.top = `${clientY - rect.top - 25}px`;
+    document.getElementById('minigame-playfield').appendChild(z);
+    setTimeout(() => z.remove(), 2100);
+  }
+
+  function transformTopWindowIntoScramble() {
+    spellingActive = true;
+    stopPurrSound();
+    document.getElementById('minigame-playfield').innerHTML = '';
+    document.getElementById('floating-hand').style.display = 'none';
+    playSfx('pop');
+
+    const target = currentMinigameWords[currentWordIdx];
+    const cleanWord = target.en.trim();
+
+    document.getElementById('minigame-instruction').textContent = 'Put the letters in order:';
+    document.getElementById('prompt-russian-word').textContent = target.ru;
+
+    const scrambleBox = document.getElementById('inline-scramble');
+    const slotsEl = document.getElementById('spell-slots');
+    const bankEl = document.getElementById('spell-bank');
+    slotsEl.innerHTML = '';
+    bankEl.innerHTML = '';
+
+    const chars = cleanWord.split('');
+    const currentAnswer = [];
+
+    chars.forEach(() => {
+      const slot = document.createElement('div');
+      slot.className = 'letter-slot';
+      slotsEl.appendChild(slot);
+    });
+
+    const scrambled = chars.map((ch, i) => ({ ch, id: i }));
+    for (let i = scrambled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [scrambled[i], scrambled[j]] = [scrambled[j], scrambled[i]];
+    }
+
+    scrambled.forEach(item => {
+      const tile = document.createElement('button');
+      tile.className = 'letter-tile';
+      tile.textContent = item.ch;
+
+      tile.onclick = () => {
+        const nextIdx = currentAnswer.length;
+        if (item.ch.toLowerCase() === chars[nextIdx].toLowerCase()) {
+          playSfx('pop');
+          tile.classList.add('used');
+          currentAnswer.push(item.ch);
+          slotsEl.children[nextIdx].textContent = chars[nextIdx];
+
+          if (currentAnswer.length === chars.length) {
+            playSfx('correct');
+            speakEnglish(cleanWord);
+            currentWordIdx++;
+            renderSatisfactionBars();
+
+            setTimeout(() => {
+              scrambleBox.classList.remove('active');
+              if (currentWordIdx < currentMinigameWords.length) {
+                renderSleepPettingPhase();
+              } else {
+                finishMinigameInPlace('sleeping', 'Goodnight! 🌙');
+              }
+            }, 700);
+          }
+        } else {
+          playSfx('wrong');
+          tile.classList.add('shake');
+          setTimeout(() => tile.classList.remove('shake'), 400);
+        }
+      };
+
+      bankEl.appendChild(tile);
+    });
+
+    scrambleBox.classList.add('active');
+  }
+
+  /* =========================================================================
+   * DRAG & DROP + CLICK HELPER FOR FOOD AND BUBBLES
+   * ========================================================================= */
+  function makeDraggableToPet(el, wordOption, onResult, onClickTap) {
+    let startX = 0, startY = 0, origLeft = 0, origTop = 0;
+    let dragging = false;
+    let maxMoveDist = 0;
+
+    const onDown = (e) => {
+      e.preventDefault();
+      dragging = true;
+      maxMoveDist = 0;
+      const pt = e.touches ? e.touches[0] : e;
+      startX = pt.clientX;
+      startY = pt.clientY;
+      const rect = el.getBoundingClientRect();
+      const parentRect = el.parentElement.getBoundingClientRect();
+      origLeft = rect.left - parentRect.left;
+      origTop = rect.top - parentRect.top;
+
+      el.style.bottom = 'auto';
+      el.style.left = `${origLeft}px`;
+      el.style.top = `${origTop}px`;
+      el.style.animation = 'none';
+      el.style.zIndex = 70;
+
+      if (onClickTap) onClickTap();
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onUp);
+    };
+
+    const onMove = (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const pt = e.touches ? e.touches[0] : e;
+      const dx = pt.clientX - startX;
+      const dy = pt.clientY - startY;
+      maxMoveDist = Math.max(maxMoveDist, Math.hypot(dx, dy));
+      el.style.left = `${origLeft + dx}px`;
+      el.style.top = `${origTop + dy}px`;
+    };
+
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+
+      el.style.zIndex = 42;
+
+      if (maxMoveDist < 12) {
+        el.style.left = `${origLeft}px`;
+        el.style.top = `${origTop}px`;
+        el.style.animation = '';
+        return;
+      }
+
+      const petRect = document.getElementById('pet-sprite-wrap').getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+
+      const overlap = !(
+        elRect.right < petRect.left + 40 ||
+        elRect.left > petRect.right - 40 ||
+        elRect.bottom < petRect.top + 40 ||
+        elRect.top > petRect.bottom - 40
+      );
+
+      const target = currentMinigameWords[currentWordIdx];
+      if (overlap) {
+        if (wordOption.en === target.en) {
+          onResult(true);
+          return;
+        } else {
+          onResult(false);
+        }
+      }
+
+      el.style.left = `${origLeft}px`;
+      el.style.top = `${origTop}px`;
+      el.style.animation = '';
+    };
+
+    el.addEventListener('mousedown', onDown);
+    el.addEventListener('touchstart', onDown, { passive: false });
+  }
+
+  /* =========================================================================
+   * 7. CONFETTI FX
+   * ========================================================================= */
+  function launchConfetti() {
+    const canvas = document.getElementById('fx-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const pieces = Array.from({ length: 75 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height * 0.5,
+      size: 7 + Math.random() * 8,
+      vy: 3 + Math.random() * 4,
+      vx: -2 + Math.random() * 4,
+      color: ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b5de5'][Math.floor(Math.random() * 5)],
+      rot: Math.random() * 360
+    }));
+
+    let frame = 0;
+    function tick() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      pieces.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += 5;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rot * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+      });
+      frame++;
+      if (frame < 110) requestAnimationFrame(tick);
+      else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    tick();
+  }
+
+  /* =========================================================================
+   * 8. TEACHER MODE FUNCTIONS
+   * ========================================================================= */
+  function openTeacherMode() {
+    const modal = document.getElementById('teacher-modal');
+    const lines = vocabularyList.map(w => `${w.en} = ${w.ru}`).join('\n');
+    document.getElementById('vocab-textarea').value = lines;
+    document.getElementById('teacher-status-msg').textContent = '';
+    modal.classList.add('active');
+  }
+
+  function closeTeacherMode() {
+    document.getElementById('teacher-modal').classList.remove('active');
+  }
+
+  function loadPreset(presetKey) {
+    if (!PRESETS[presetKey]) return;
+    const lines = PRESETS[presetKey].map(w => `${w.en} = ${w.ru}`).join('\n');
+    document.getElementById('vocab-textarea').value = lines;
+    document.getElementById('teacher-status-msg').textContent = 'Preset loaded! Click Save & Apply.';
+  }
+
+  function parseTeacherTextarea() {
+    const raw = document.getElementById('vocab-textarea').value.trim();
+    const lines = raw.split('\n');
+    const parsed = [];
+
+    lines.forEach(line => {
+      const sep = line.includes('=') ? '=' : (line.includes('-') ? '-' : null);
+      if (sep) {
+        const parts = line.split(sep);
+        const en = parts[0].trim();
+        const ru = parts.slice(1).join(sep).trim();
+        if (en && ru) parsed.push({ en, ru });
+      }
+    });
+    return parsed;
+  }
+
+  function saveTeacherVocab() {
+    const parsed = parseTeacherTextarea();
+    if (parsed.length < 4) {
+      document.getElementById('teacher-status-msg').style.color = '#e63946';
+      document.getElementById('teacher-status-msg').textContent = 'Please enter at least 4 word pairs!';
+      return;
+    }
+    vocabularyList = parsed;
+    localStorage.setItem('tamagotchi_custom_vocab', JSON.stringify(vocabularyList));
+    saveStudentProgress();
+
+    document.getElementById('teacher-status-msg').style.color = 'var(--green)';
+    document.getElementById('teacher-status-msg').textContent = `Saved ${vocabularyList.length} words!`;
+
+    setTimeout(() => {
+      closeTeacherMode();
+      if (inMinigame && activeMinigameType) {
+        triggerMinigame(activeMinigameType);
+      }
+    }, 600);
+  }
+
+  function copyShareLink() {
+    const parsed = parseTeacherTextarea();
+    if (parsed.length < 4) return;
+    const encoded = btoa(encodeURIComponent(JSON.stringify(parsed)));
+    const url = `${window.location.origin}${window.location.pathname}?words=${encoded}`;
+    navigator.clipboard.writeText(url).then(() => {
+      document.getElementById('teacher-status-msg').style.color = 'var(--blue)';
+      document.getElementById('teacher-status-msg').textContent = '🔗 Shareable link copied to clipboard!';
+    });
+  }
+
+  /* =========================================================================
+   * INITIALIZE PREVIEWS ON PAGE LOAD
+   * ========================================================================= */
+  window.addEventListener('DOMContentLoaded', () => {
+    initVocabFromStorageOrUrl();
+    resolveBackground('room');
+
+    setSpriteImage(document.getElementById('intro-kitten-preview'), null, 'kitten', 'base');
+    setSpriteImage(document.getElementById('intro-cat-preview'),    null, 'cat',    'base');
+    setSpriteImage(document.getElementById('intro-puppy-preview'),  null, 'puppy',  'base');
+    setSpriteImage(document.getElementById('intro-dog-preview'),    null, 'dog',    'base');
+    setSpriteImage(document.getElementById('intro-chick-preview'),  null, 'chick',  'base');
+    setSpriteImage(document.getElementById('intro-chicken-preview'),null, 'chicken','base');
+  });
+</script>
+</body>
+</html>
